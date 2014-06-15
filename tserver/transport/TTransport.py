@@ -2,6 +2,7 @@
 #14-6-11
 # create by: snower
 
+from tornado.iostream import StreamClosedError
 from thrift.transport import TTransport
 
 class TIOStreamTransportFactory:
@@ -13,6 +14,8 @@ class TIOStreamTransportFactory:
 
 
 class TIOStreamTransport(TTransport.TTransportBase):
+    MAX_BUFFER_SIZE=16*1024
+
     def __init__(self, stream):
         self.__stream = stream
         self.__wbuf=TTransport.StringIO()
@@ -24,12 +27,20 @@ class TIOStreamTransport(TTransport.TTransportBase):
         return self.__stream.close()
 
     def read(self, sz, callback):
-        self.__stream.read_bytes(sz,callback)
+        if sz<=self.__stream._read_buffer_size:
+            callback(self.__stream._consume(sz))
+        else:
+            self.__stream.read_bytes(sz,callback)
 
     def write(self, buf):
         self.__wbuf.write(buf)
+        if self.__wbuf.tell()>self.MAX_BUFFER_SIZE:
+            self.flush()
 
     def flush(self):
         out = self.__wbuf.getvalue()
         self.__wbuf = TTransport.StringIO()
-        self.__stream.write(out)
+        try:
+            self.__stream.write(out)
+        except StreamClosedError:
+            pass

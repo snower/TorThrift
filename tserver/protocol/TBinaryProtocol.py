@@ -22,12 +22,7 @@ class TBinaryProtocol(TBinaryProtocol.TBinaryProtocol):
                 if self.strictRead:
                     raise TProtocol.TProtocolException(type=TProtocol.TProtocolException.BAD_VERSION,
                                              message='No protocol version header')
-                def read_info(buff):
-                    name=buff[:sz]
-                    type=self.unpackByte(buff[sz])
-                    seqid =self.unpackI32(buff[sz+1:])
-                    callback((name,type,seqid))
-                self.trans.read(sz+5,read_info)
+                self.trans.read(sz+5,lambda buff:callback((buff[:sz],self.unpackByte(buff[sz]),self.unpackI32(buff[sz+1:]))))
         self.readI32(read_size)
 
     def readMessageEnd(self,callback):
@@ -40,43 +35,25 @@ class TBinaryProtocol(TBinaryProtocol.TBinaryProtocol):
         callback()
 
     def readFieldBegin(self,callback):
-        def read_type(type):
-            if type == TProtocol.TType.STOP:
-                callback((None, type, 0))
-            else:
-                self.readI16(lambda id:callback((None, type, id)))
-        self.readByte(read_type)
+        self.readByte(lambda type:callback((None, type, 0)) if type == TProtocol.TType.STOP else self.readI16(lambda id:callback((None, type, id))))
 
     def readFieldEnd(self,callback):
         callback()
 
     def readMapBegin(self,callback):
-        def read(buff):
-            ktype = self.unpackByte(buff[0])
-            vtype = self.unpackByte(buff[1])
-            size = self.unpackI32(buff[2:])
-            callback((ktype, vtype, size))
-        self.trans.read(6,read)
+        self.trans.read(6,lambda buff:callback((self.unpackByte(buff[0]), self.unpackByte(buff[1]), self.unpackI32(buff[2:]))))
 
     def readMapEnd(self,callback):
         callback()
 
     def readListBegin(self,callback):
-        def read(buff):
-            etype = self.unpackByte(buff[0])
-            size = self.unpackI32(buff[1:])
-            callback((etype, size))
-        self.trans.read(5,read)
+        self.trans.read(5,lambda buff:callback((self.unpackByte(buff[0]), self.unpackI32(buff[1:]))))
 
     def readListEnd(self,callback):
         callback()
 
     def readSetBegin(self,callback):
-        def read(buff):
-            etype = self.unpackByte(buff[0])
-            size = self.unpackI32(buff[1:])
-            callback((etype, size))
-        self.trans.read(5,read)
+        self.trans.read(5,lambda buff:callback((self.unpackByte(buff[0]), self.unpackI32(buff[1:]))))
 
     def readSetEnd(self,callback):
         callback()
@@ -85,36 +62,31 @@ class TBinaryProtocol(TBinaryProtocol.TBinaryProtocol):
         self.readByte(lambda byte:callback(byte == 0))
 
     def unpackByte(self,buff):
-        val, = struct.unpack('!b', buff)
-        return val
+        return struct.unpack('!b', buff)[0]
 
     def readByte(self,callback):
         self.trans.read(1,lambda buff:callback(self.unpackByte(buff)))
 
     def unpackI16(self,buff):
-        val, = struct.unpack('!h', buff)
-        return val
+        return struct.unpack('!h', buff)[0]
 
     def readI16(self,callback):
         self.trans.read(2,lambda buff:callback(self.unpackI16(buff)))
 
     def unpackI32(self,buff):
-        val, = struct.unpack('!i', buff)
-        return val
+        return struct.unpack('!i', buff)[0]
 
     def readI32(self,callback):
         self.trans.read(4,lambda buff:callback(self.unpackI32(buff)))
 
     def unpackI64(self,buff):
-        val, = struct.unpack('!q', buff)
-        return val
+        return struct.unpack('!q', buff)[0]
 
     def readI64(self,callback):
         self.trans.read(8,lambda buff:callback(self.unpackI64(buff)))
 
     def unpackDouble(self,buff):
-        val, = struct.unpack('!d', buff)
-        return val
+        return struct.unpack('!d', buff)[0]
 
     def readDouble(self,callback):
         self.trans.read(8,lambda buff:callback(self.unpackDouble(buff)))
