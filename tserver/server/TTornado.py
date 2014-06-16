@@ -10,7 +10,7 @@ from tornado.ioloop import IOLoop
 
 class TTornadoServer(tcpserver.TCPServer):
     def __init__(self,processor,input_transport_factory,input_protocol_factory,output_transport_factory=None,output_protocol_factory=None):
-        super(tcpserver.TCPServer,self).__init__()
+        super(TTornadoServer,self).__init__()
         self.processor = processor
         self.input_transport_factory = input_transport_factory
         self.output_transport_factory = output_transport_factory or input_transport_factory
