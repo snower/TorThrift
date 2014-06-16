@@ -8,16 +8,20 @@ from tornado import tcpserver
 from thrift.server import TServer
 from tornado.ioloop import IOLoop
 
-class TTornadoServer(tcpserver.TCPServer,TServer.TServer):
-    def __init__(self,*args,**kwargs):
+class TTornadoServer(tcpserver.TCPServer):
+    def __init__(self,processor,input_transport_factory,input_protocol_factory,output_transport_factory=None,output_protocol_factory=None):
         tcpserver.TCPServer.__init__(self)
-        TServer.__init__(self,*args,**kwargs)
+        self.processor = processor
+        self.input_transport_factory = input_transport_factory
+        self.output_transport_factory = output_transport_factory or input_transport_factory
+        self.input_protocol_factory = input_protocol_factory
+        self.output_protocol_factory = output_protocol_factory or input_protocol_factory
 
     def handle_stream(self, stream, address):
-        itrans = self.inputTransportFactory.getTransport(stream)
-        otrans = self.outputTransportFactory.getTransport(stream)
-        iprot = self.inputProtocolFactory.getProtocol(itrans)
-        oprot = self.outputProtocolFactory.getProtocol(otrans)
+        itrans = self.input_transport_factory.getTransport(stream)
+        otrans = self.output_transport_factory.getTransport(stream)
+        iprot = self.input_protocol_factory.getProtocol(itrans)
+        oprot = self.output_protocol_factory.getProtocol(otrans)
 
         def next():
             self.io_loop.add_callback(process)
