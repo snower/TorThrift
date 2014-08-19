@@ -4,11 +4,19 @@
 
 import sys
 import struct
-from tornado.concurrent import TracebackFuture
 from thrift.protocol import TProtocol
-from thrift.protocol import TBinaryProtocol
+from thrift.protocol import TBinaryProtocol as OriginTBinaryProtocol
 
-class TBinaryProtocol(TBinaryProtocol.TBinaryProtocol):
+class TBinaryProtocolFactory:
+    def __init__(self, strictRead=False, strictWrite=True):
+        self.strictRead = strictRead
+        self.strictWrite = strictWrite
+
+    def getProtocol(self, trans):
+        prot = TBinaryProtocol(trans, self.strictRead, self.strictWrite)
+        return prot
+
+class TBinaryProtocol(OriginTBinaryProtocol.TBinaryProtocol):
     def readMessageBegin(self,callback):
         def read_size(sz):
             if sz < 0:
@@ -153,33 +161,15 @@ class TBinaryProtocol(TBinaryProtocol.TBinaryProtocol):
                 skip_value(size)
             self.readListBegin(skip_fields)
 
-class TBinaryProtocolFactory:
-    def __init__(self, strictRead=False, strictWrite=True):
-        self.strictRead = strictRead
-        self.strictWrite = strictWrite
-
-    def getProtocol(self, trans):
-        prot = TBinaryProtocol(trans, self.strictRead, self.strictWrite)
-        return prot
+class TGrBinaryProtocol(OriginTBinaryProtocol.TBinaryProtocol):
+    pass
 
 class TBinaryProtocolPool(object):
     def __init__(self, pool):
         self._pool = pool
 
     def get_protocol(self):
-        future = TracebackFuture()
-        try:
-            transport_future = self._pool.get_transport()
-            def finish(transport):
-                try:
-                    transport = transport_future.result()
-                    future.set_result(TBinaryProtocol(transport))
-                except Exception:
-                    future.set_exc_info(transport_future.exc_info())
-            transport_future.add_done_callback(finish)
-        except Exception:
-            future.set_exc_info(sys.exc_info())
-        return future
+        return TGrBinaryProtocol(self._pool.get_transport())
 
     def release_protocol(self, protocol):
         self._pool.release_transport(protocol.trans)

@@ -24,7 +24,7 @@ try:
     transport.open()
 
     start = time.time()
-    for i in range(1000):
+    for i in range(100000):
         t = time.time()
         result = client.add(0,i)
         print result,time.time()-t

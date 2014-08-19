@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))))
-sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py.tornado"))
+sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py"))
 
 import time
 from tornado.ioloop import IOLoop
@@ -21,14 +21,14 @@ from torthrift.client import PoolClient
 @gen.coroutine
 def test():
     try:
-        transport = TStreamPool('127.0.0.1', 10000, max_stream=1)
+        transport = TStreamPool('127.0.0.1', 10000, max_stream=10)
         transport = TIOStreamTransportPool(transport)
         protocol = TBinaryProtocolPool(transport)
         client = PoolClient(Client, protocol)
 
         start = time.time()
         futures = []
-        for i in range(1):
+        for i in range(100000):
             futures.append((client.add(0,i),time.time()))
         for future,t in futures:
             result = yield future

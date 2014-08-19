@@ -5,9 +5,16 @@
 import sys
 import socket
 from collections import deque
-from tornado.concurrent import TracebackFuture
+import greenlet
 from tornado.ioloop import IOLoop
 from stream import TStream
+
+class TStream(TStream):
+    def open(self):
+        child_gr = greenlet.getcurrent()
+        main = child_gr.parent
+        super(TStream, self).open(lambda :child_gr.switch())
+        return main.switch()
 
 class TStreamPool(object):
     def __init__(self, host='127.0.0.1', port=9090, unix_socket=None, max_stream=4, socket_family=socket.AF_UNSPEC):
@@ -21,7 +28,7 @@ class TStreamPool(object):
         self._stream_count = 0
         self._wait_streams = deque()
 
-    def init_stream(self, future):
+    def init_stream(self):
         stream = TStream(self._host, self._port, self._unix_socket, self._socket_family)
         def on_close():
             try:
@@ -34,29 +41,26 @@ class TStreamPool(object):
             self._stream_count -= 1
         stream.set_close_callback(on_close)
         self._used_streams.append(stream)
-        stream.open(lambda :future.set_result(stream))
         self._stream_count += 1
-
+        stream.open()
+        return stream
 
     def get_stream(self):
-        future = TracebackFuture()
         if self._streams:
-            stream = self._streams.popleft()
-            future.set_result(stream)
+            return self._streams.popleft()
         else:
             if self._stream_count < self._max_stream:
-                try:
-                    self.init_stream(future)
-                except Exception:
-                    future.set_exc_info(sys.exc_info())
+                return self.init_stream()
             else:
-                self._wait_streams.append(future)
-        return future
+                child_gr = greenlet.getcurrent()
+                main = child_gr.parent
+                self._wait_streams.append(child_gr)
+                return main.switch()
 
     def release_stream(self, stream):
         if self._wait_streams:
-            future = self._wait_streams.popleft()
-            IOLoop.current().add_callback(lambda :future.set_result(stream))
+            child_gr = self._wait_streams.popleft()
+            IOLoop.current().add_callback(lambda :child_gr.switch(stream))
         else:
             try:
                 self._used_streams.remove(stream)

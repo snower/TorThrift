@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.se
 from thrift.transport.TSocket import TServerSocket
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport.TTransport import TBufferedTransportFactory
-from thrift.server.TServer import TSimpleServer
+from thrift.server.TProcessPoolServer import TProcessPoolServer
 from example.Example import Processor
 
 class Handler(object):
@@ -26,5 +26,6 @@ if __name__=="__main__":
     tfactory = TBufferedTransportFactory()
     protocol =TBinaryProtocolFactory()
 
-    server = TSimpleServer(processor, transport, tfactory, protocol)
+    server = TProcessPoolServer(processor, transport, tfactory, protocol)
+    server.setNumWorkers(10)
     server.serve()
