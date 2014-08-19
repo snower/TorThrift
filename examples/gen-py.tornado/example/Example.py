@@ -20,11 +20,7 @@ from tornado import gen
 from tornado import stack_context
 
 class Iface(object):
-<<<<<<< HEAD
     def add(self, a, b):
-=======
-    def add(self, a, b, callback):
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
         """
         Parameters:
          - a
@@ -34,7 +30,6 @@ class Iface(object):
 
 
 class Client(Iface):
-<<<<<<< HEAD
     def __init__(self, iprot, oprot=None):
       self._iprot = self._oprot = iprot
       if oprot is not None:
@@ -43,38 +38,12 @@ class Client(Iface):
 
     @gen.coroutine
     def add(self, a, b):
-=======
-    def __init__(self, transport, iprot_factory, oprot_factory=None):
-      self._transport = transport
-      self._iprot_factory = iprot_factory
-      self._oprot_factory = (oprot_factory if oprot_factory is not None
-                             else iprot_factory)
-      self._seqid = 0
-      self._reqs = {}
-
-    @gen.engine
-    def recv_dispatch(self):
-      """read a response from the wire. schedule exactly one per send that
-      expects a response, but it doesn't matter which callee gets which
-      response; they're dispatched here properly"""
-
-      # wait for a frame header
-      frame = yield gen.Task(self._transport.readFrame)
-      tr = TTransport.TMemoryBuffer(frame)
-      iprot = self._iprot_factory.getProtocol(tr)
-      (fname, mtype, rseqid) = iprot.readMessageBegin()
-      method = getattr(self, 'recv_' + fname)
-      method(iprot, mtype, rseqid)
-
-    def add(self, a, b, callback):
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
         """
         Parameters:
          - a
          - b
         """
         self._seqid += 1
-<<<<<<< HEAD
         self.send_add(a, b)
         result = yield self.recv_add()
         raise gen.Return(result)
@@ -102,38 +71,6 @@ class Client(Iface):
         if result.success is not None:
           raise gen.Return(result.success)
         raise TApplicationException(TApplicationException.MISSING_RESULT, "add failed: unknown result");
-=======
-        self._reqs[self._seqid] = callback
-        self.send_add(a, b)
-        self.recv_dispatch()
-
-    def send_add(self, a, b):
-        oprot = self._oprot_factory.getProtocol(self._transport)
-        oprot.writeMessageBegin('add', TMessageType.CALL, self._seqid)
-        args = add_args()
-        args.a = a
-        args.b = b
-        args.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def recv_add(self, iprot, mtype, rseqid):
-        callback = self._reqs.pop(rseqid)
-        if mtype == TMessageType.EXCEPTION:
-          x = TApplicationException()
-          x.read(iprot)
-          iprot.readMessageEnd()
-          callback(x)
-          return
-        result = add_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-          callback(result.success)
-          return
-        callback(TApplicationException(TApplicationException.MISSING_RESULT, "add failed: unknown result"))
-        return
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
 
 
 class Processor(Iface, TProcessor):
@@ -142,13 +79,8 @@ class Processor(Iface, TProcessor):
         self._processMap = {}
         self._processMap["add"] = Processor.process_add
 
-<<<<<<< HEAD
     @gen.coroutine
     def process(self, iprot, oprot):
-=======
-    @gen.engine
-    def process(self, iprot, oprot, callback):
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
         (name, type, seqid) = yield gen.Task(iprot.readMessageBegin)
         if name not in self._processMap:
             yield gen.Task(iprot.skip,TType.STRUCT)
@@ -160,10 +92,6 @@ class Processor(Iface, TProcessor):
             oprot.trans.flush()
         else:
             yield gen.Task(self._processMap[name], self, seqid, iprot, oprot)
-<<<<<<< HEAD
-=======
-        callback()
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
 
     @gen.coroutine
     def process_add(self, seqid, iprot, oprot):
