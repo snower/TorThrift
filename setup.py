@@ -5,21 +5,17 @@
 from setuptools import setup
 
 setup(
-<<<<<<< HEAD
     name='torthrift',
-=======
-    name='tserver',
->>>>>>> b1393791745a62602e72f878f5dbc6521b52a154
     version='0.0.1',
-    packages=['tserver','tserver.protocol','tserver.server','tserver.transport'],
+    packages=['torthrift','torthrift.protocol','torthrift.server','torthrift.transport'],
     package_data={
         '': ['README.md'],
     },
-    install_requires=['thrift>=0.9.1','tornado>=3.2.1'],
+    install_requires=['thrift>=0.9.1','tornado>=3.2.1', 'greenlet>=0.4.2',],
     author='snower',
     author_email='sujian199@gmail.com',
-    url='http://github.com/snower/tserver',
+    url='http://github.com/snower/TorThrift',
     license='MIT',
-    description='Thrift高性能的Tornado server',
-    long_description='Thrift高性能的Tornado server'
+    description='Thrift Tornado server',
+    long_description='Thrift Tornado server'
 )

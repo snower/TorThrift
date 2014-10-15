@@ -1,3 +1,3 @@
 TServer
 ========================
-Thrift高性能的Tornado server
+Thrift Tornado server
