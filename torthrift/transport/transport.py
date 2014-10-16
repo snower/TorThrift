@@ -45,9 +45,9 @@ class TIOStreamTransport(TTransport.TTransportBase):
             callback(self._rbuffer.read(sz))
         elif sz <= self._stream._read_buffer_size:
             self._rbuffer_size = self._stream._read_buffer_size - sz
-            self._rbuffer = cStringIO.StringIO("".join(self._rfile._read_buffer))
-            self._rfile._read_buffer.clear()
-            self._rfile._read_buffer_size = 0
+            self._rbuffer = cStringIO.StringIO("".join(self._stream._read_buffer))
+            self._stream._read_buffer.clear()
+            self._stream._read_buffer_size = 0
             callback(self._rbuffer.read(sz))
         else:
             self._stream.read_bytes(sz,callback)
@@ -72,9 +72,9 @@ class TGrIOStreamTransport(TIOStreamTransport):
             return self._rbuffer.read(sz)
         if sz <= self._stream._read_buffer_size:
             self._rbuffer_size = self._stream._read_buffer_size - sz
-            self._rbuffer = cStringIO.StringIO("".join(self._rfile._read_buffer))
-            self._rfile._read_buffer.clear()
-            self._rfile._read_buffer_size = 0
+            self._rbuffer = cStringIO.StringIO("".join(self._stream._read_buffer))
+            self._stream._read_buffer.clear()
+            self._stream._read_buffer_size = 0
             return self._rbuffer.read(sz)
         else:
             child_gr = greenlet.getcurrent()
