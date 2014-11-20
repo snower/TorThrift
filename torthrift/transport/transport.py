@@ -43,14 +43,25 @@ class TIOStreamTransport(TTransport.TTransportBase):
         if sz <= self._rbuffer_size:
             self._rbuffer_size -= sz
             callback(self._rbuffer.read(sz))
-        elif sz <= self._stream._read_buffer_size:
-            self._rbuffer_size = self._stream._read_buffer_size - sz
-            self._rbuffer = cStringIO.StringIO("".join(self._stream._read_buffer))
+
+        elif sz <= self._stream._read_buffer_size + self._rbuffer_size:
+            last_buf = b''
+            if self._rbuffer_size > 0:
+                last_buf += self._rbuffer.next()
+            self._rbuffer_size = self._stream._read_buffer_size + self._rbuffer_size - sz
+            self._rbuffer = cStringIO.StringIO(last_buf + b"".join(self._stream._read_buffer))
             self._stream._read_buffer.clear()
             self._stream._read_buffer_size = 0
             callback(self._rbuffer.read(sz))
+
         else:
-            self._stream.read_bytes(sz,callback)
+            def read_callback(data):
+                last_buf = b''
+                if self._rbuffer_size > 0:
+                    last_buf += self._rbuffer.next()
+                self._rbuffer_size = 0
+                callback(last_buf + data)
+            self._stream.read_bytes(sz - self._rbuffer_size,read_callback)
 
     def write(self, data):
         self._wbuffer.write(data)
@@ -70,17 +81,29 @@ class TGrIOStreamTransport(TIOStreamTransport):
         if sz <= self._rbuffer_size:
             self._rbuffer_size -= sz
             return self._rbuffer.read(sz)
-        if sz <= self._stream._read_buffer_size:
-            self._rbuffer_size = self._stream._read_buffer_size - sz
-            self._rbuffer = cStringIO.StringIO("".join(self._stream._read_buffer))
+
+        if sz <= self._stream._read_buffer_size + self._rbuffer_size:
+            last_buf = b''
+            if self._rbuffer_size > 0:
+                last_buf += self._rbuffer.next()
+
+            self._rbuffer_size = self._stream._read_buffer_size + self._rbuffer_size - sz
+            self._rbuffer = cStringIO.StringIO(last_buf + b"".join(self._stream._read_buffer))
             self._stream._read_buffer.clear()
             self._stream._read_buffer_size = 0
             return self._rbuffer.read(sz)
-        else:
-            child_gr = greenlet.getcurrent()
-            main = child_gr.parent
-            self._stream.read_bytes(sz,lambda data:child_gr.switch(data))
-            return main.switch()
+
+        child_gr = greenlet.getcurrent()
+        main = child_gr.parent
+
+        def read_callback(data):
+            last_buf = b''
+            if self._rbuffer_size > 0:
+                last_buf += self._rbuffer.next()
+            self._rbuffer_size = 0
+            return child_gr.switch(last_buf + data)
+        self._stream.read_bytes(sz - self._rbuffer_size, read_callback)
+        return main.switch()
 
 class TIOStreamTransportPool(object):
     def __init__(self, pool):
