@@ -3,5 +3,4 @@
 # create by: snower
 
 from stream import TStream
-from pool import TStreamPool
-from transport import TIOStreamTransportFactory, TIOStreamTransport, TIOStreamTransportPool
+from transport import TIOStreamTransportFactory, TIOStreamTransport

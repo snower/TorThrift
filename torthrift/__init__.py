@@ -2,5 +2,5 @@
 #14-6-11
 # create by: snower
 
-version = "0.0.3"
-version_info = (0,0,3)
+version = "0.0.4"
+version_info = (0,0,4)

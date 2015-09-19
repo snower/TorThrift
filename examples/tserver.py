@@ -5,20 +5,19 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))))
-sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py.tornado"))
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))))
+sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py"))
 
-from torthrift.protocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from torthrift.transport import TIOStreamTransportFactory
 from torthrift.server import TTornadoServer
 from example.Example import Processor
 from tornado.ioloop import IOLoop
-from tornado import gen
+from torthrift import gen
 
 class Handler(object):
     @gen.coroutine
     def add(self,a,b):
-        print a+b
         raise gen.Return(a+b)
 
 if __name__=="__main__":
@@ -28,6 +27,6 @@ if __name__=="__main__":
     protocol =TBinaryProtocolFactory()
 
     server = TTornadoServer(processor, tfactory, protocol)
-    server.bind(10000)
+    server.bind(20000)
     server.start(0)
     IOLoop.instance().start()
