@@ -2,5 +2,5 @@
 #14-6-11
 # create by: snower
 
-from stream import TStream
-from transport import TIOStreamTransportFactory, TIOStreamTransport
+from .stream import TStream
+from .transport import TIOStreamTransportFactory, TIOStreamTransport

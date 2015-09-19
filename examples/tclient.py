@@ -28,10 +28,10 @@ def test():
         for i in range(10000):
             futures.append(client.add(0,i))
         yield futures
-        print time.time()-start
+        print(time.time()-start)
 
-    except Thrift.TException, ex:
-        print "%s" % (ex.message)
+    except Thrift.TException as ex:
+        print("%s" % (ex.message))
     ioloop.stop()
 
 def start():

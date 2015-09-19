@@ -7,7 +7,7 @@ import logging
 from collections import deque
 from tornado.ioloop import IOLoop
 from tornado.gen import TracebackFuture
-from transport.stream import TStream
+from .transport.stream import TStream
 
 class TStreamPoolClosedError(Exception): pass
 

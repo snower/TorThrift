@@ -7,7 +7,7 @@ import greenlet
 from tornado import gen
 from tornado.concurrent import TracebackFuture
 from tornado.ioloop import IOLoop
-from transport.transport import TIOStreamTransportFactory
+from .transport.transport import TIOStreamTransportFactory
 
 def async_call_method(fun, *args, **kwargs):
     future = TracebackFuture()

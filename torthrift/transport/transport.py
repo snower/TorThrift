@@ -14,6 +14,7 @@ else:
     import cStringIO
     StringIO = cStringIO.StringIO
 
+
 class TIOStreamTransportFactory:
     """Factory transport that builds buffered transports"""
 
