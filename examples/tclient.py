@@ -21,18 +21,16 @@ from torthrift.client import PoolClient
 @gen.coroutine
 def test():
     try:
-        transport = TStreamPool('127.0.0.1', 10000, max_stream=10)
+        transport = TStreamPool('127.0.0.1', 20000, max_stream=10)
         transport = TIOStreamTransportPool(transport)
         protocol = TBinaryProtocolPool(transport)
         client = PoolClient(Client, protocol)
 
         start = time.time()
         futures = []
-        for i in range(100000):
-            futures.append((client.add(0,i),time.time()))
-        for future,t in futures:
-            result = yield future
-            print result,time.time()-t
+        for i in range(10000):
+            futures.append(client.add(0,i))
+        yield futures
         print time.time()-start
 
     except Thrift.TException, ex:

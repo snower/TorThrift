@@ -16,13 +16,12 @@ from example.Example import Processor
 
 class Handler(object):
     def add(self,a,b):
-        print a+b
         return a+b
 
 if __name__=="__main__":
     handler = Handler()
     processor = Processor(handler)
-    transport = TServerSocket(port=10000)
+    transport = TServerSocket(port=20000)
     tfactory = TBufferedTransportFactory()
     protocol =TBinaryProtocolFactory()
 

@@ -18,7 +18,6 @@ from tornado import gen
 class Handler(object):
     @gen.coroutine
     def add(self,a,b):
-        print a+b
         raise gen.Return(a+b)
 
 if __name__=="__main__":
@@ -28,6 +27,6 @@ if __name__=="__main__":
     protocol =TBinaryProtocolFactory()
 
     server = TTornadoServer(processor, tfactory, protocol)
-    server.bind(10000)
+    server.bind(20000)
     server.start(0)
     IOLoop.instance().start()
