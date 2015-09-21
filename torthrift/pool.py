@@ -12,25 +12,16 @@ from .transport.stream import TStream
 class TStreamPoolClosedError(Exception): pass
 
 class TStream(TStream):
-    def __init__(self, pool, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(TStream, self).__init__(*args, **kwargs)
 
-        self.pool = pool
         self.used_time = time.time()
         self.idle_time = time.time()
-
-    def close(self, exc_info=False, remote=False):
-        if not remote:
-            return self.pool.release_stream(self)
-        return self.do_close(exc_info)
-
-    def do_close(self, exc_info=False):
-        return super(TStream, self).close(exc_info)
 
 class TStreamPool(object):
     def __init__(self, *args, **kwargs):
         self._max_stream = kwargs.pop("max_stream") if "max_stream" in kwargs else 1
-        self._idle_seconds = kwargs.pop("idle_seconds") if "idle_seconds" in kwargs else 1
+        self._idle_seconds = kwargs.pop("idle_seconds") if "idle_seconds" in kwargs else 0
         self._args = args
         self._kwargs = kwargs
         self._streams = deque()
@@ -63,7 +54,7 @@ class TStreamPool(object):
                 self._close_future.set_result(True)
 
     def init_stream(self, future):
-        stream = TStream(self, *self._args, **self._kwargs)
+        stream = TStream(*self._args, **self._kwargs)
         stream.set_close_callback(lambda :self.stream_close_callback(stream))
         self._used_streams[id(stream)] = stream
         self._stream_count += 1
@@ -98,7 +89,7 @@ class TStreamPool(object):
         return future
 
     def release_stream(self, stream):
-        if stream.closed:
+        if stream.closed():
             return
 
         if not self._wait_streams:
@@ -107,7 +98,7 @@ class TStreamPool(object):
             else:
                 try:
                     del self._used_streams[id(stream)]
-                except ValueError:
+                except KeyError:
                     pass
                 stream.idle_time = time.time()
                 self._streams.append(stream)

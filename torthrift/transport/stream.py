@@ -15,7 +15,6 @@ class TStream(IOStream):
         self._unix_socket = unix_socket
         self._socket_family = socket_family
         self._timeout = timeout
-        self._close_callbacks = {}
 
         if self._unix_socket:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -24,18 +23,6 @@ class TStream(IOStream):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
         super(TStream, self).__init__(sock)
-
-        def callback():
-            for id, cb in self._close_callbacks.iteritems():
-                cb()
-            self._close_callbacks = {}
-        super(TStream, self).set_close_callback(callback)
-
-    def set_close_callback(self, callback):
-        if type(callback) == type(self.set_close_callback):
-            self._close_callbacks[id(callback.im_self)] = callback
-        else:
-            self._close_callbacks[id(callback)] = callback
 
     def open(self):
         if self._unix_socket:

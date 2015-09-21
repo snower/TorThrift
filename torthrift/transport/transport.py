@@ -5,7 +5,7 @@
 import sys
 import greenlet
 from tornado.concurrent import TracebackFuture
-from tornado.iostream import StreamClosedError
+from tornado.ioloop import IOLoop
 from thrift.transport import TTransport
 
 if sys.version_info[0] >= 3:
@@ -32,21 +32,6 @@ class TIOStreamTransport(TTransport.TTransportBase):
         self._rbuffer = StringIO(b'')
         self._wbuffer_size = 0
         self._rbuffer_size = 0
-        self.child_gr = None
-
-        if not hasattr(self._stream, "_close_callbacks"):
-            setattr(self._stream, "_close_callbacks", {})
-            def callback():
-                for id, cb in self._stream._close_callbacks.iteritems():
-                    cb()
-                self._stream._close_callbacks = {}
-            self._stream.set_close_callback(callback)
-        self._stream._close_callbacks[id(self)] = self.stream_close_callback
-
-    def stream_close_callback(self):
-        if self.child_gr:
-            self.child_gr.throw(StreamClosedError())
-        self.child_gr = None
 
     def open(self):
         try:
@@ -58,14 +43,11 @@ class TIOStreamTransport(TTransport.TTransportBase):
         return future
 
     def closed(self):
-        return self._stream and self._stream.closed()
+        return self._stream.closed()
 
     def close(self):
         if not self.closed():
-            del self._stream._close_callbacks[id(self)]
-            r = self._stream.close()
-            self._stream = None
-            return r
+            return self._stream.close()
 
     def read(self, sz):
         if sz <= self._rbuffer_size:
@@ -82,20 +64,23 @@ class TIOStreamTransport(TTransport.TTransportBase):
             self._stream._read_buffer_size = 0
             return self._rbuffer.read(sz)
 
-        self.child_gr = greenlet.getcurrent()
-        main = self.child_gr.parent
+        child_gr = greenlet.getcurrent()
+        main = child_gr.parent
         assert main is not None, "Execut must be running in child greenlet"
 
-        def read_callback(data):
+        def read_callback(future):
+            if future._exc_info is not None:
+                return child_gr.throw(future.exception())
+
+            data = future.result()
             last_buf = b''
             if self._rbuffer_size > 0:
                 last_buf += self._rbuffer.read()
             self._rbuffer_size = 0
-            return self.child_gr.switch(last_buf + data)
-        self._stream.read_bytes(sz - self._rbuffer_size, read_callback)
-        data = main.switch()
-        self.child_gr = None
-        return data
+            return child_gr.switch(last_buf + data)
+        future = self._stream.read_bytes(sz - self._rbuffer_size)
+        IOLoop.current().add_future(future, read_callback)
+        return main.switch()
 
     def write(self, data):
         self._wbuffer.write(data)

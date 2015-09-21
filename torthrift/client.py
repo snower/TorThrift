@@ -41,9 +41,9 @@ class PoolClient(object):
             try:
                 result = yield async_call_method(getattr(client, name), *args, **kwargs)
             finally:
-                iprot.trans.close()
-                if oprot:
-                    oprot.trans.close()
+                self._itrans_pool.release_stream(istream)
+                if ostream:
+                    self._otrans_pool.release_stream(ostream)
             raise gen.Return(result)
         setattr(self, name, _)
         return _
