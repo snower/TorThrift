@@ -62,6 +62,7 @@ class TIOStreamTransport(TTransport.TTransportBase):
 
     def close(self):
         if not self.closed():
+            del self._stream._close_callbacks[id(self)]
             return self._stream.close()
 
     def read(self, sz):
