@@ -5,9 +5,10 @@
 import sys
 import greenlet
 from tornado.concurrent import TracebackFuture
+from tornado.iostream import StreamClosedError
 from thrift.transport import TTransport
 
-if sys.version_info[0] >=3:
+if sys.version_info[0] >= 3:
     import io
     StringIO = io.BytesIO
 else:
@@ -31,6 +32,21 @@ class TIOStreamTransport(TTransport.TTransportBase):
         self._rbuffer = StringIO(b'')
         self._wbuffer_size = 0
         self._rbuffer_size = 0
+        self.child_gr = None
+
+        if not hasattr(self._stream, "_close_callbacks"):
+            setattr(self._stream, "_close_callbacks", {})
+            def callback():
+                for id, cb in self._stream._close_callbacks.iteritems():
+                    cb()
+                self._stream._close_callbacks = {}
+            self._stream.set_close_callback(callback)
+        self._stream._close_callbacks[id(self)] = self.stream_close_callback
+
+    def stream_close_callback(self):
+        if self.child_gr:
+            self.child_gr.throw(StreamClosedError())
+        self.child_gr = None
 
     def open(self):
         try:
@@ -63,8 +79,8 @@ class TIOStreamTransport(TTransport.TTransportBase):
             self._stream._read_buffer_size = 0
             return self._rbuffer.read(sz)
 
-        child_gr = greenlet.getcurrent()
-        main = child_gr.parent
+        self.child_gr = greenlet.getcurrent()
+        main = self.child_gr.parent
         assert main is not None, "Execut must be running in child greenlet"
 
         def read_callback(data):
@@ -72,14 +88,16 @@ class TIOStreamTransport(TTransport.TTransportBase):
             if self._rbuffer_size > 0:
                 last_buf += self._rbuffer.read()
             self._rbuffer_size = 0
-            return child_gr.switch(last_buf + data)
+            return self.child_gr.switch(last_buf + data)
         self._stream.read_bytes(sz - self._rbuffer_size, read_callback)
-        return main.switch()
+        data = main.switch()
+        self.child_gr = None
+        return data
 
     def write(self, data):
         self._wbuffer.write(data)
         self._wbuffer_size += len(data)
-        if self._wbuffer_size > self.DEFAULT_BUFFER:
+        if self._wbuffer_size >= self.DEFAULT_BUFFER:
             self.flush()
 
     def flush(self):
