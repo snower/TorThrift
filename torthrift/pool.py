@@ -21,18 +21,11 @@ class TStream(TStream):
 
     def close(self, exc_info=False, remote=False):
         if not remote:
-            pool = self.pool
-            self.pool = None
-            return pool.release_stream(self)
+            return self.pool.release_stream(self)
         return self.do_close(exc_info)
 
     def do_close(self, exc_info=False):
         return super(TStream, self).close(exc_info)
-
-    def closed(self, remote=False):
-        if not remote:
-            return not self.pool
-        return super(TStream, self).closed()
 
 class TStreamPool(object):
     def __init__(self, *args, **kwargs):

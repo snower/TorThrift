@@ -58,12 +58,14 @@ class TIOStreamTransport(TTransport.TTransportBase):
         return future
 
     def closed(self):
-        return self._stream.closed()
+        return self._stream and self._stream.closed()
 
     def close(self):
         if not self.closed():
             del self._stream._close_callbacks[id(self)]
-            return self._stream.close()
+            r = self._stream.close()
+            self._stream = None
+            return r
 
     def read(self, sz):
         if sz <= self._rbuffer_size:
