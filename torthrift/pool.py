@@ -89,6 +89,9 @@ class TStreamPool(object):
         return future
 
     def release_stream(self, stream):
+        if stream.closed:
+            return
+
         if not self._wait_streams:
             if self._closed:
                 stream.close()
