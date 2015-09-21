@@ -32,6 +32,7 @@ class TIOStreamTransport(TTransport.TTransportBase):
         self._rbuffer = StringIO(b'')
         self._wbuffer_size = 0
         self._rbuffer_size = 0
+        self._loop = IOLoop.current()
 
     def open(self):
         try:
@@ -79,7 +80,7 @@ class TIOStreamTransport(TTransport.TTransportBase):
             self._rbuffer_size = 0
             return child_gr.switch(last_buf + data)
         future = self._stream.read_bytes(sz - self._rbuffer_size)
-        IOLoop.current().add_future(future, read_callback)
+        self._loop.add_future(future, read_callback)
         return main.switch()
 
     def write(self, data):
