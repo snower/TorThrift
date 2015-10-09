@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='torthrift',
-    version='0.0.4',
+    version='0.0.5',
     packages=['torthrift','torthrift.server','torthrift.transport'],
     package_data={
         '': ['README.md'],

@@ -33,7 +33,6 @@ class TStream(IOStream):
         if self._timeout > 0:
             def timeout():
                 if self._connecting:
-                    self.close()
-                    future.set_exception(TStreamConnectTimeoutError())
+                    self.close((None, TStreamConnectTimeoutError(), None))
             self.io_loop.add_timeout(time.time() + self._timeout, timeout)
         return future
