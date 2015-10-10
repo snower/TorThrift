@@ -41,7 +41,7 @@ class TStreamPool(object):
         self._check_close_callback = False
         for stream in list(self._streams):
             if not stream.closed():
-                stream._read_to_buffer()
+                stream._handle_read()
 
     def stream_close_callback(self, stream):
         try:
