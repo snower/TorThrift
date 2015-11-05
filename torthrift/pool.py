@@ -37,7 +37,6 @@ class TStreamPool(object):
         self._close_callback = callback
 
     def stream_close_callback(self, stream):
-        print stream
         try:
             del self._used_streams[id(stream)]
             self._stream_count -= 1
