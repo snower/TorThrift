@@ -14,10 +14,15 @@ def async_call_method(fun, *args, **kwargs):
     def finish():
         try:
             result = fun(*args, **kwargs)
-            IOLoop.current().add_callback(lambda :future.set_result(result))
+            if future._callbacks:
+                IOLoop.current().add_callback(future.set_result, result)
+            else:
+                future.set_result(result)
         except:
-            exc_info = sys.exc_info()
-            IOLoop.current().add_callback(lambda :future.set_exc_info(exc_info))
+            if future._callbacks:
+                IOLoop.current().add_callback(future.set_exc_info, sys.exc_info())
+            else:
+                future.set_exc_info(sys.exc_info())
     child_gr = greenlet.greenlet(finish)
     child_gr.switch()
     return future

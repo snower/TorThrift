@@ -66,10 +66,10 @@ class TStreamPool(object):
 
     def init_stream(self, future):
         stream = TStream(*self._args, **self._kwargs)
-        stream.set_close_callback(lambda :self.stream_close_callback(stream))
+        stream.set_close_callback(lambda : self.stream_close_callback(stream))
+        open_future = stream.open()
         self._used_streams[id(stream)] = stream
         self._stream_count += 1
-        open_future = stream.open()
 
         def finish(open_future):
             if open_future._exc_info is not None:
@@ -114,10 +114,10 @@ class TStreamPool(object):
             else:
                 try:
                     del self._used_streams[id(stream)]
+                    stream.idle_time = time.time()
+                    self._streams.append(stream)
                 except KeyError:
-                    pass
-                stream.idle_time = time.time()
-                self._streams.append(stream)
+                    logging.error("release unknown stream %s", stream)
         else:
             future = self._wait_streams.popleft()
             stream.used_time = time.time()
