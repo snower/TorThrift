@@ -32,18 +32,12 @@ class TStreamPool(object):
         self._closed = False
         self._close_callback = None
         self._close_future = None
-        self._check_close_callback = False
 
     def set_close_callback(self, callback):
         self._close_callback = callback
 
-    def check_close_callback(self):
-        self._check_close_callback = False
-        for stream in list(self._streams):
-            if not stream.closed():
-                stream._handle_read()
-
     def stream_close_callback(self, stream):
+        print stream
         try:
             del self._used_streams[id(stream)]
             self._stream_count -= 1
@@ -59,10 +53,6 @@ class TStreamPool(object):
                 self._close_callback()
             if self._close_future:
                 self._close_future.set_result(True)
-
-        if not self._check_close_callback:
-            IOLoop.current().add_callback(self.check_close_callback)
-            self._check_close_callback = True
 
     def init_stream(self, future):
         stream = TStream(*self._args, **self._kwargs)

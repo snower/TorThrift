@@ -63,6 +63,9 @@ class TIOStreamTransport(TTransport.TTransportBase):
             self._rbuffer = StringIO(last_buf + b''.join(self._stream._read_buffer))
             self._stream._read_buffer.clear()
             self._stream._read_buffer_size = 0
+            if not self._stream._state & self._stream.io_loop.READ:
+                self._stream._state |= self._stream.io_loop.READ
+                self._stream.io_loop.update_handler(self._stream.fileno(), self._stream._state)
             return self._rbuffer.read(sz)
 
         child_gr = greenlet.getcurrent()
