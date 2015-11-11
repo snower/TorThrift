@@ -28,7 +28,7 @@ class TTornadoServer(tcpserver.TCPServer):
                     otrans.close()
                 break
             except Exception as e:
-                logging.error("processor error: %s", e)
+                logging.exception("processor error: %s", e)
                 itrans.close()
                 if otrans:
                     otrans.close()
