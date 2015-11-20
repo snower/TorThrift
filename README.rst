@@ -34,17 +34,16 @@ server.py
         @gen.coroutine
         def add(self,a,b):
             raise gen.Return(a+b)
-    
-    if __name__=="__main__":
-        handler = Handler()
-        processor = Processor(handler)
-        tfactory = TIOStreamTransportFactory()
-        protocol =TBinaryProtocolFactory()
-    
-        server = TTornadoServer(processor, tfactory, protocol)
-        server.bind(20000)
-        server.start(0)
-        IOLoop.instance().start()
+
+    handler = Handler()
+    processor = Processor(handler)
+    tfactory = TIOStreamTransportFactory()
+    protocol =TBinaryProtocolFactory()
+
+    server = TTornadoServer(processor, tfactory, protocol)
+    server.bind(20000)
+    server.start(0)
+    IOLoop.instance().start()
         
 client.py
     
