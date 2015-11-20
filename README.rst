@@ -22,9 +22,10 @@ Installation
 Examples
 ========
 
+server.py
+
 ::
-    server.py
-    
+
     from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
     from torthrift.transport import TIOStreamTransportFactory
     from torthrift.server import TTornadoServer
@@ -48,8 +49,10 @@ Examples
         server.start(0)
         IOLoop.instance().start()
         
-    client.py
+client.py
     
+::
+
     from tornado.ioloop import IOLoop
     from tornado import gen
     from example.Example import Client
