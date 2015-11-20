@@ -27,6 +27,10 @@ example.thrift
      i32 add(1:i32 a,2:i32 b)
     }
     
+::
+
+    thrift --gen py example.thrift
+    
 server.py
 
 ::
