@@ -1,3 +1,0 @@
-TServer
-========================
-Thrift Tornado server
