@@ -1,9 +1,6 @@
 TorThrift
 ========
 
-.. image:: https://travis-ci.org/snower/TorMySQL.svg
-    :target: https://travis-ci.org/snower/TorMySQL
-
 Tornado asynchronous thrift server and client
 
 About
