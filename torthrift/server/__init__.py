@@ -22,7 +22,7 @@ class TTornadoServer(tcpserver.TCPServer):
         while True:
             try:
                 self.processor.process(iprot, oprot)
-            except (IOError, StreamClosedError):
+            except (IOError, StreamClosedError, EOFError):
                 itrans.close()
                 if otrans:
                     otrans.close()

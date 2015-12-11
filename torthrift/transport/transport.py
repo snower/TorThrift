@@ -6,6 +6,7 @@ import sys
 import greenlet
 from tornado.concurrent import TracebackFuture
 from tornado.ioloop import IOLoop
+from tornado.iostream import StreamClosedError
 from thrift.transport import TTransport
 
 if sys.version_info[0] >= 3:
@@ -23,15 +24,13 @@ class TIOStreamTransportFactory:
         return TIOStreamTransport(stream)
 
 
-class TIOStreamTransport(TTransport.TTransportBase):
+class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTransport):
     DEFAULT_BUFFER = 4096
 
     def __init__(self, stream):
         self._stream = stream
         self._wbuffer = StringIO()
         self._rbuffer = StringIO(b'')
-        self._wbuffer_size = 0
-        self._rbuffer_size = 0
         self._loop = IOLoop.current()
 
     def open(self):
@@ -50,22 +49,22 @@ class TIOStreamTransport(TTransport.TTransportBase):
         if not self.closed():
             return self._stream.close()
 
-    def read(self, sz):
-        if sz <= self._rbuffer_size:
-            self._rbuffer_size -= sz
-            return self._rbuffer.read(sz)
+    def readAll(self, sz):
+        try:
+            return self.read(sz)
+        except StreamClosedError:
+            raise EOFError()
 
-        if sz <= self._stream._read_buffer_size + self._rbuffer_size:
-            last_buf = b''
-            if self._rbuffer_size > 0:
-                last_buf += self._rbuffer.read()
-            self._rbuffer_size = self._stream._read_buffer_size + self._rbuffer_size - sz
-            self._rbuffer = StringIO(last_buf + b''.join(self._stream._read_buffer))
+    def read(self, sz):
+        data = self._rbuffer.read(sz)
+        if len(data) >= sz:
+            return data
+        partialread = data
+
+        if sz <= self._stream._read_buffer_size + len(partialread):
+            self._rbuffer = StringIO(partialread + b''.join(self._stream._read_buffer))
             self._stream._read_buffer.clear()
             self._stream._read_buffer_size = 0
-            if self._stream._state and (self._stream._state & self._stream.io_loop.READ == 0):
-                self._stream._state |= self._stream.io_loop.READ
-                self._stream.io_loop.update_handler(self._stream.fileno(), self._stream._state)
             return self._rbuffer.read(sz)
 
         child_gr = greenlet.getcurrent()
@@ -77,24 +76,35 @@ class TIOStreamTransport(TTransport.TTransportBase):
                 return child_gr.throw(future.exception())
 
             data = future.result()
-            last_buf = b''
-            if self._rbuffer_size > 0:
-                last_buf += self._rbuffer.read()
-            self._rbuffer_size = 0
-            return child_gr.switch(last_buf + data)
-        future = self._stream.read_bytes(sz - self._rbuffer_size)
+
+            if self._stream._read_buffer_size > 0:
+                self._rbuffer = StringIO(b''.join(self._stream._read_buffer))
+                self._stream._read_buffer.clear()
+                self._stream._read_buffer_size = 0
+
+                if self._stream._state and (self._stream._state & self._stream.io_loop.READ == 0):
+                    self._stream._state |= self._stream.io_loop.READ
+                    self._stream.io_loop.update_handler(self._stream.fileno(), self._stream._state)
+
+            return child_gr.switch(partialread + data)
+        future = self._stream.read_bytes(sz - len(partialread))
         self._loop.add_future(future, read_callback)
         return main.switch()
 
     def write(self, data):
         self._wbuffer.write(data)
-        self._wbuffer_size += len(data)
-        if self._wbuffer_size >= self.DEFAULT_BUFFER:
-            self.flush()
 
     def flush(self):
-        if self._wbuffer_size > 0:
-            data = self._wbuffer.getvalue()
-            self._wbuffer = StringIO()
-            self._wbuffer_size = 0
+        data = self._wbuffer.getvalue()
+        if data:
             self._stream.write(data)
+        self._wbuffer = StringIO()
+
+    @property
+    def cstringio_buf(self):
+        return self._rbuffer
+
+    def cstringio_refill(self, partialread, reqlen):
+        data = self.read(reqlen - len(partialread))
+        self._rbuffer = StringIO(partialread + data + self._rbuffer.read())
+        return self._rbuffer

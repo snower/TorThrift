@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))))
 sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py"))
 
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from torthrift.transport import TIOStreamTransportFactory
 from torthrift.server import TTornadoServer
 from example.Example import Processor
@@ -24,7 +24,7 @@ if __name__=="__main__":
     handler = Handler()
     processor = Processor(handler)
     tfactory = TIOStreamTransportFactory()
-    protocol =TBinaryProtocolFactory()
+    protocol =TBinaryProtocolAcceleratedFactory()
 
     server = TTornadoServer(processor, tfactory, protocol)
     server.bind(20000)

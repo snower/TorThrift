@@ -14,26 +14,21 @@ from tornado import gen
 from example.Example import Client
 from thrift import Thrift
 from torthrift.pool import TStreamPool
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from torthrift.client import PoolClient
 
 @gen.coroutine
 def test():
     try:
         transport = TStreamPool('127.0.0.1', 20000, max_stream=10)
-        client = PoolClient(Client, transport, TBinaryProtocolFactory())
+        client = PoolClient(Client, transport, TBinaryProtocolAcceleratedFactory())
 
         start = time.time()
         futures = []
-        for i in range(10):
+        for i in range(10000):
             futures.append(client.add(0,i))
         yield futures
         print(time.time()-start)
-        time.sleep(5)
-
-        for i in range(10):
-            futures.append(client.add(0,i))
-        yield futures
 
     except Thrift.TException as ex:
         print("%s" % (ex.message))
