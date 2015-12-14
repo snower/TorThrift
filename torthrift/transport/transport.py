@@ -105,6 +105,34 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         return self._rbuffer
 
     def cstringio_refill(self, partialread, reqlen):
-        data = self.read(reqlen - len(partialread))
-        self._rbuffer = StringIO(partialread + data + self._rbuffer.read())
-        return self._rbuffer
+        if reqlen <= self._stream._read_buffer_size + len(partialread):
+            self._rbuffer = StringIO(partialread + b''.join(self._stream._read_buffer))
+            self._stream._read_buffer.clear()
+            self._stream._read_buffer_size = 0
+            return self._rbuffer
+
+        child_gr = greenlet.getcurrent()
+        main = child_gr.parent
+        assert main is not None, "Execut must be running in child greenlet"
+
+        def read_callback(future):
+            if future._exc_info is not None:
+                return child_gr.throw(future.exception())
+
+            data = future.result()
+
+            if self._stream._read_buffer_size > 0:
+                self._rbuffer = StringIO("".join([partialread, data, b''.join(self._stream._read_buffer)]))
+                self._stream._read_buffer.clear()
+                self._stream._read_buffer_size = 0
+
+                if self._stream._state and (self._stream._state & self._stream.io_loop.READ == 0):
+                    self._stream._state |= self._stream.io_loop.READ
+                    self._stream.io_loop.update_handler(self._stream.fileno(), self._stream._state)
+            else:
+                self._rbuffer = StringIO(partialread + data)
+
+            return child_gr.switch(self._rbuffer)
+        future = self._stream.read_bytes(reqlen - len(partialread))
+        self._loop.add_future(future, read_callback)
+        return main.switch()
