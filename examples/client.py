@@ -13,12 +13,12 @@ from example.Example import Client
 from thrift import Thrift
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TBufferedTransport
-from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
 
 try:
     transport = TSocket('127.0.0.1', 20000)
     transport = TBufferedTransport(transport)
-    protocol = TBinaryProtocol(transport)
+    protocol = TBinaryProtocolAccelerated(transport)
     client = Client(protocol)
 
     transport.open()

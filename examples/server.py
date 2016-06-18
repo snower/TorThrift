@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(
 sys.path.append(os.path.abspath(os.path.abspath(os.path.dirname(__file__))+os.sep+"gen-py"))
 
 from thrift.transport.TSocket import TServerSocket
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport.TTransport import TBufferedTransportFactory
 from thrift.server.TProcessPoolServer import TProcessPoolServer
 from example.Example import Processor
@@ -23,7 +23,7 @@ if __name__=="__main__":
     processor = Processor(handler)
     transport = TServerSocket(port=20000)
     tfactory = TBufferedTransportFactory()
-    protocol =TBinaryProtocolFactory()
+    protocol =TBinaryProtocolAcceleratedFactory()
 
     server = TProcessPoolServer(processor, transport, tfactory, protocol)
     server.setNumWorkers(10)

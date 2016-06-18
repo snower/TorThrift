@@ -6,16 +6,16 @@ from setuptools import setup
 
 setup(
     name='torthrift',
-    version='0.0.3',
-    packages=['torthrift','torthrift.protocol','torthrift.server','torthrift.transport'],
+    version='0.1.2',
+    packages=['torthrift','torthrift.server','torthrift.transport'],
     package_data={
-        '': ['README.md'],
+        '': ['README.rst'],
     },
     install_requires=['thrift>=0.9.1','tornado>=3.2.1', 'greenlet>=0.4.2',],
     author='snower',
     author_email='sujian199@gmail.com',
     url='http://github.com/snower/TorThrift',
     license='MIT',
-    description='Thrift Tornado server',
-    long_description='Thrift Tornado server'
+    description='Tornado asynchronous thrift server and client',
+    long_description='torthrift - presents a Tornado Future-based API and greenlet for non-blocking thrift server and client.'
 )
