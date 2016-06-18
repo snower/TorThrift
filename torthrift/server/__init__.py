@@ -11,6 +11,7 @@ from tornado import tcpserver
 from tornado.concurrent import TracebackFuture
 from tornado.tcpserver import ssl_wrap_socket, app_log
 from tornado.iostream import IOStream as BaseIOStream, SSLIOStream, StreamClosedError, errno_from_exception, _ERRNO_WOULDBLOCK
+from .handler import HandlerWrapper
 
 class IOStream(BaseIOStream):
     def __init__(self, socket, *args, **kwargs):
@@ -137,6 +138,7 @@ class TTornadoServer(tcpserver.TCPServer):
     def __init__(self, processor, input_transport_factory, input_protocol_factory, output_transport_factory = None, output_protocol_factory = None):
         super(TTornadoServer,self).__init__()
         self.processor = processor
+        self.processor._handler = HandlerWrapper(self.processor, self.processor._handler)
         self.input_transport_factory = input_transport_factory
         self.output_transport_factory = output_transport_factory
         self.input_protocol_factory = input_protocol_factory
@@ -174,16 +176,6 @@ class TTornadoServer(tcpserver.TCPServer):
                 else:
                     raise
             except socket.error as err:
-                # If the connection is closed immediately after it is created
-                # (as in a port scan), we can get one of several errors.
-                # wrap_socket makes an internal call to getpeername,
-                # which may return either EINVAL (Mac OS X) or ENOTCONN
-                # (Linux).  If it returns ENOTCONN, this error is
-                # silently swallowed by the ssl module, so we need to
-                # catch another error later on (AttributeError in
-                # SSLIOStream._do_ssl_handshake).
-                # To test this behavior, try nmap with the -sT flag.
-                # https://github.com/tornadoweb/tornado/pull/750
                 if errno_from_exception(err) in (errno.ECONNABORTED, errno.EINVAL):
                     return connection.close()
                 else:

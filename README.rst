@@ -40,7 +40,7 @@ server.py
     from torthrift.server import TTornadoServer
     from example.Example import Processor
     from tornado.ioloop import IOLoop
-    from torthrift import gen
+    from tornado import gen
     
     class Handler(object):
         @gen.coroutine
