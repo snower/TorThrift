@@ -2,6 +2,7 @@
 #14-6-11
 # create by: snower
 
+import sys
 import logging
 import socket
 import errno
@@ -135,14 +136,19 @@ class IOStream(BaseIOStream):
                     self.io_loop.update_handler(self.fileno(), self._state)
 
 class TTornadoServer(tcpserver.TCPServer):
-    def __init__(self, processor, input_transport_factory, input_protocol_factory, output_transport_factory = None, output_protocol_factory = None):
-        super(TTornadoServer,self).__init__()
+    def __init__(self, processor, input_transport_factory, input_protocol_factory, output_transport_factory = None, output_protocol_factory = None, *args, **kwargs):
+        super(TTornadoServer,self).__init__(*args, **kwargs)
+
         self.processor = processor
-        self.processor._handler = HandlerWrapper(self.processor, self.processor._handler)
         self.input_transport_factory = input_transport_factory
         self.output_transport_factory = output_transport_factory
         self.input_protocol_factory = input_protocol_factory
         self.output_protocol_factory = output_protocol_factory
+
+        self.processor._handler = HandlerWrapper(self.processor, self.processor._handler)
+
+    def handle_exception(self, exec_info):
+        logging.error("processor error: %s", exec_info = exec_info)
 
     def process(self, itrans, otrans):
         iprot = self.input_protocol_factory.getProtocol(itrans)
@@ -155,11 +161,12 @@ class TTornadoServer(tcpserver.TCPServer):
                 if otrans:
                     otrans.close()
                 break
-            except Exception as e:
-                logging.exception("processor error: %s", e)
+            except Exception:
+                exc_info = sys.exc_info()
                 itrans.close()
                 if otrans:
                     otrans.close()
+                self.handle_exception(exc_info)
                 break
 
     def _handle_connection(self, connection, address):
@@ -189,11 +196,9 @@ class TTornadoServer(tcpserver.TCPServer):
                 stream = IOStream(connection, io_loop=self.io_loop,
                                   max_buffer_size=self.max_buffer_size,
                                   read_chunk_size=self.read_chunk_size)
-            future = self.handle_stream(stream, address)
-            if future is not None:
-                self.io_loop.add_future(future, lambda f: f.result())
+            self.handle_stream(stream, address)
         except Exception:
-            app_log.error("Error in connection callback", exc_info=True)
+            self.handle_exception(sys.exc_info())
 
     def handle_stream(self, stream, address):
         itrans = self.input_transport_factory.getTransport(stream)
