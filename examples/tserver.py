@@ -16,9 +16,8 @@ from tornado.ioloop import IOLoop
 from torthrift import gen
 
 class Handler(object):
-    @gen.coroutine
-    def add(self,a,b):
-        raise gen.Return(a+b)
+    def add(self, a, b):
+        return a + b
 
 if __name__=="__main__":
     handler = Handler()
