@@ -147,8 +147,8 @@ class TTornadoServer(tcpserver.TCPServer):
 
         self.processor._handler = HandlerWrapper(self.processor, self.processor._handler)
 
-    def handle_exception(self, exec_info):
-        logging.error("processor error: %s", exec_info = exec_info)
+    def handle_exception(self, exc_info):
+        logging.error("processor error: %s", exc_info = exc_info)
 
     def process(self, itrans, otrans):
         iprot = self.input_protocol_factory.getProtocol(itrans)
