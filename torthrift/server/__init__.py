@@ -12,6 +12,7 @@ from tornado import tcpserver
 from tornado.concurrent import TracebackFuture
 from tornado.tcpserver import ssl_wrap_socket, app_log
 from tornado.iostream import IOStream as BaseIOStream, SSLIOStream, StreamClosedError, errno_from_exception, _ERRNO_WOULDBLOCK
+from thrift.transport import TTransport
 from .handler import HandlerWrapper
 
 class IOStream(BaseIOStream):
@@ -153,21 +154,17 @@ class TTornadoServer(tcpserver.TCPServer):
     def process(self, itrans, otrans):
         iprot = self.input_protocol_factory.getProtocol(itrans)
         oprot = self.output_protocol_factory.getProtocol(otrans) if otrans and self.output_protocol_factory else iprot
-        while True:
-            try:
+
+        try:
+            while True:
                 self.processor.process(iprot, oprot)
-            except (IOError, StreamClosedError, EOFError):
-                itrans.close()
-                if otrans:
-                    otrans.close()
-                break
-            except Exception:
-                exc_info = sys.exc_info()
-                itrans.close()
-                if otrans:
-                    otrans.close()
-                self.handle_exception(exc_info)
-                break
+        except (TTransport.TTransportException, IOError, StreamClosedError, EOFError):
+            pass
+        except Exception:
+            self.handle_exception(sys.exc_info())
+        itrans.close()
+        if otrans:
+            otrans.close()
 
     def _handle_connection(self, connection, address):
         if self.ssl_options is not None:

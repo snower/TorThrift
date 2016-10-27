@@ -2,9 +2,10 @@
 #16-6-18
 # create by: snower
 
+import sys
 import greenlet
 from tornado.ioloop import IOLoop
-from tornado.concurrent import is_future
+from tornado.concurrent import is_future, Future
 
 class HandlerWrapper(object):
     def __init__(self, processor, handler):
@@ -18,25 +19,28 @@ class HandlerWrapper(object):
         func = getattr(self._handler, name)
         ioloop = IOLoop.current()
 
+        def run(child_gr, *args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+            except:
+                exc_info = sys.exc_info()
+                result = Future()
+                result.set_exc_info(exc_info)
+            if not is_future(result):
+                return child_gr.switch(result)
+            return ioloop.add_future(result, child_gr.switch)
+
         def _(*args, **kwargs):
             child_gr = greenlet.getcurrent()
             main = child_gr.parent
             if main is None:
                 return func(*args, **kwargs)
 
-            def finish(future):
-                if future._exc_info is not None:
-                    return child_gr.throw(future.exception())
-                return child_gr.switch(future.result())
-
-            def run():
-                result = func(*args, **kwargs)
-                if not is_future(result):
-                    return child_gr.switch(result)
-                return ioloop.add_future(result, finish)
-
-            ioloop.add_callback(run)
-            return main.switch()
+            ioloop.add_callback(run, child_gr, *args, **kwargs)
+            result = main.switch()
+            if is_future(result):
+                result = result.result()
+            return result
 
         setattr(self, name, _)
         return _
