@@ -27,10 +27,6 @@ class IOStream(BaseIOStream):
         if self._closed:
             return
         try:
-            if self._connecting:
-                self._handle_connect()
-            if self._closed:
-                return
             if events & self.io_loop.READ:
                 self._handle_read()
             if self._closed:
@@ -119,28 +115,39 @@ class IOStream(BaseIOStream):
             if self._state & self.io_loop.WRITE:
                 self._state = self._state & ~self.io_loop.WRITE
                 self.io_loop.update_handler(self.fileno(), self._state)
+            if self._write_future:
+                future, self._write_future = self._write_future, None
+                future.set_result(None)
 
     def write(self, data):
         assert isinstance(data, bytes)
         if self._closed:
             raise StreamClosedError(real_error=self.error)
 
-        if data:
-            self._write_buffer.append(data)
-            self._write_buffer_size += len(data)
+        if not data:
+            future = self._write_future if self._write_future else TracebackFuture()
+            future.set_result(None)
+            return None
 
-        if not self._connecting:
-            self._handle_write()
-            if self._write_buffer:
-                if not self._state & self.io_loop.WRITE:
-                    self._state = self._state | self.io_loop.WRITE
-                    self.io_loop.update_handler(self.fileno(), self._state)
+        self._write_buffer.append(data)
+        self._write_buffer_size += len(data)
+        future = self._write_future = TracebackFuture()
+
+        self._handle_write()
+        if self._write_buffer:
+            if not self._state & self.io_loop.WRITE:
+                self._state = self._state | self.io_loop.WRITE
+                self.io_loop.update_handler(self.fileno(), self._state)
+
+        return future
 
 class TTornadoServer(tcpserver.TCPServer):
     def __init__(self, processor, input_transport_factory, input_protocol_factory, output_transport_factory = None, output_protocol_factory = None, *args, **kwargs):
         super(TTornadoServer,self).__init__(*args, **kwargs)
 
         self.processor = processor
+        self.processor_count = 0
+        self.stoped = False
         self.input_transport_factory = input_transport_factory
         self.output_transport_factory = output_transport_factory
         self.input_protocol_factory = input_protocol_factory
@@ -156,15 +163,22 @@ class TTornadoServer(tcpserver.TCPServer):
         oprot = self.output_protocol_factory.getProtocol(otrans) if otrans and self.output_protocol_factory else iprot
 
         try:
-            while True:
+            self.processor_count += 1
+            while not self.stoped:
                 self.processor.process(iprot, oprot)
         except (TTransport.TTransportException, IOError, StreamClosedError, EOFError):
             pass
         except Exception:
             self.handle_exception(sys.exc_info())
+        finally:
+            self.processor_count -= 1
+
         itrans.close()
         if otrans:
             otrans.close()
+        if self.processor_count == 0 and self.stoped:
+            stoped_future, self.stoped = self.stoped, None
+            stoped_future.set_result(None)
 
     def _handle_connection(self, connection, address):
         if self.ssl_options is not None:
@@ -202,3 +216,9 @@ class TTornadoServer(tcpserver.TCPServer):
         otrans = self.output_transport_factory.getTransport(stream) if self.output_transport_factory else None
         child_gr = greenlet.greenlet(self.process)
         child_gr.switch(itrans, otrans)
+
+    def stop(self):
+        super(TTornadoServer, self).stop()
+
+        future = self.stoped = TracebackFuture()
+        return future

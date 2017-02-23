@@ -68,6 +68,8 @@ class TStream(IOStream):
 
         if not self.closed():
             self._state = self.io_loop.ERROR | self.io_loop.READ
+            if self._write_buffer:
+                self._state = self._state | self.io_loop.WRITE
             self.io_loop.update_handler(self.fileno(), self._state)
 
     def _handle_read(self):
@@ -142,15 +144,23 @@ class TStream(IOStream):
             if self._state & self.io_loop.WRITE:
                 self._state = self._state & ~self.io_loop.WRITE
                 self.io_loop.update_handler(self.fileno(), self._state)
+            if self._write_future:
+                future, self._write_future = self._write_future, None
+                future.set_result(None)
 
     def write(self, data):
         assert isinstance(data, bytes)
         if self._closed:
             raise StreamClosedError(real_error=self.error)
 
-        if data:
-            self._write_buffer.append(data)
-            self._write_buffer_size += len(data)
+        if not data:
+            future = self._write_future if self._write_future else TracebackFuture()
+            future.set_result(None)
+            return None
+
+        self._write_buffer.append(data)
+        self._write_buffer_size += len(data)
+        future = self._write_future = TracebackFuture()
 
         if not self._connecting:
             self._handle_write()
@@ -158,3 +168,5 @@ class TStream(IOStream):
                 if not self._state & self.io_loop.WRITE:
                     self._state = self._state | self.io_loop.WRITE
                     self.io_loop.update_handler(self.fileno(), self._state)
+
+        return future

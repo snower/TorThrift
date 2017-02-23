@@ -4,6 +4,7 @@
 
 import sys
 import greenlet
+from collections import deque
 from tornado.concurrent import TracebackFuture
 from tornado.ioloop import IOLoop
 from tornado.iostream import StreamClosedError
@@ -28,7 +29,8 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
 
     def __init__(self, stream):
         self._stream = stream
-        self._wbuffer = StringIO()
+        self._wbuffer = deque()
+        self._wbuffer_len = 0
         self._rbuffer = StringIO(b'')
         self._loop = IOLoop.current()
 
@@ -95,13 +97,35 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         return main.switch()
 
     def write(self, data):
-        self._wbuffer.write(data)
+        self._wbuffer.append(data)
+        self._wbuffer_len += len(data)
+        if self._wbuffer_len >= self.DEFAULT_BUFFER:
+            data = "".join(self._wbuffer)
+            self._wbuffer.clear()
+            self._wbuffer_len = 0
+            self._stream.write(data)
 
     def flush(self):
-        data = self._wbuffer.getvalue()
-        if data:
-            self._stream.write(data)
-        self._wbuffer = StringIO()
+        if self._wbuffer_len:
+            data = "".join(self._wbuffer)
+            self._wbuffer.clear()
+            self._wbuffer_len = 0
+            future = self._stream.write(data)
+        else:
+            future = self._stream.write('')
+        if future.done():
+            return
+
+        child_gr = greenlet.getcurrent()
+        main = child_gr.parent
+        assert main is not None, "Execut must be running in child greenlet"
+
+        def write_callback(future):
+            if future._exc_info is not None:
+                return child_gr.throw(future.exception())
+            return child_gr.switch(future.result())
+        self._loop.add_future(future, write_callback)
+        return main.switch()
 
     @property
     def cstringio_buf(self):
