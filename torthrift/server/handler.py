@@ -9,7 +9,8 @@ from tornado.ioloop import IOLoop
 from tornado.concurrent import is_future, Future
 
 class HandlerWrapper(object):
-    def __init__(self, processor, handler):
+    def __init__(self, server, processor, handler):
+        self._server = server
         self._processor = processor
         self._handler = handler
 
@@ -33,16 +34,20 @@ class HandlerWrapper(object):
 
         @functools.wraps(func)
         def _(*args, **kwargs):
-            child_gr = greenlet.getcurrent()
-            main = child_gr.parent
-            if main is None:
-                return func(*args, **kwargs)
+            self._server.handing_count += 1
+            try:
+                child_gr = greenlet.getcurrent()
+                main = child_gr.parent
+                if main is None:
+                    return func(*args, **kwargs)
 
-            ioloop.add_callback(run, child_gr, *args, **kwargs)
-            result = main.switch()
-            if is_future(result):
-                result = result.result()
-            return result
+                ioloop.add_callback(run, child_gr, *args, **kwargs)
+                result = main.switch()
+                if is_future(result):
+                    result = result.result()
+                return result
+            finally:
+                self._server.handing_count -= 1
 
         setattr(self, name, _)
         return _

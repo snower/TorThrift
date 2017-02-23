@@ -147,13 +147,14 @@ class TTornadoServer(tcpserver.TCPServer):
 
         self.processor = processor
         self.processor_count = 0
+        self.handing_count = 0
         self.stoped = False
         self.input_transport_factory = input_transport_factory
         self.output_transport_factory = output_transport_factory
         self.input_protocol_factory = input_protocol_factory
         self.output_protocol_factory = output_protocol_factory
 
-        self.processor._handler = HandlerWrapper(self.processor, self.processor._handler)
+        self.processor._handler = HandlerWrapper(self, self.processor, self.processor._handler)
 
     def handle_exception(self, exc_info):
         logging.error("processor error: %s", exc_info = exc_info)
@@ -176,7 +177,7 @@ class TTornadoServer(tcpserver.TCPServer):
         itrans.close()
         if otrans:
             otrans.close()
-        if self.processor_count == 0 and self.stoped:
+        if self.handing_count == 0 and self.stoped:
             stoped_future, self.stoped = self.stoped, None
             stoped_future.set_result(None)
 
@@ -221,4 +222,7 @@ class TTornadoServer(tcpserver.TCPServer):
         super(TTornadoServer, self).stop()
 
         future = self.stoped = TracebackFuture()
+        if self.handing_count <= 1:
+            self.stoped = None
+            future.set_result(None)
         return future
