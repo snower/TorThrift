@@ -10,12 +10,14 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import StreamClosedError
 from thrift.transport import TTransport
 
+
 if sys.version_info[0] >= 3:
     import io
     StringIO = io.BytesIO
 else:
     import cStringIO
     StringIO = cStringIO.StringIO
+
 
 class TIOStreamTransportFactory:
     """Factory transport that builds buffered transports"""

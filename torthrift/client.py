@@ -9,6 +9,7 @@ from tornado.concurrent import TracebackFuture
 from tornado.ioloop import IOLoop
 from .transport.transport import TIOStreamTransportFactory
 
+
 def async_call_method(fun, *args, **kwargs):
     future = TracebackFuture()
     def finish():
@@ -26,6 +27,7 @@ def async_call_method(fun, *args, **kwargs):
     child_gr = greenlet.greenlet(finish)
     child_gr.switch()
     return future
+
 
 class PoolClient(object):
     def __init__(self, client_class, itrans_pool, pfactory, tfactory = TIOStreamTransportFactory(), otrans_pool=None):

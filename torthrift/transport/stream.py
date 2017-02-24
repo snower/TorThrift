@@ -8,7 +8,10 @@ import errno
 from tornado.concurrent import TracebackFuture
 from tornado.iostream import IOStream, StreamClosedError, _ERRNO_WOULDBLOCK
 
-class TStreamConnectTimeoutError(Exception): pass
+
+class TStreamConnectTimeoutError(Exception):
+    pass
+
 
 class TStream(IOStream):
     def __init__(self, host='127.0.0.1', port=9090, unix_socket=None, socket_family=socket.AF_UNSPEC, timeout=5):

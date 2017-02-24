@@ -7,16 +7,19 @@ import logging
 from collections import deque
 from tornado.ioloop import IOLoop
 from tornado.gen import TracebackFuture
-from .transport.stream import TStream
+from .transport.stream import TStream as BaseTStream
 
-class TStreamPoolClosedError(Exception): pass
+class TStreamPoolClosedError(Exception):
+    pass
 
-class TStream(TStream):
+
+class TStream(BaseTStream):
     def __init__(self, *args, **kwargs):
         super(TStream, self).__init__(*args, **kwargs)
 
         self.used_time = time.time()
         self.idle_time = time.time()
+
 
 class TStreamPool(object):
     def __init__(self, *args, **kwargs):
