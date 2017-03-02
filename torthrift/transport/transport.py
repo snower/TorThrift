@@ -14,9 +14,20 @@ from thrift.transport import TTransport
 if sys.version_info[0] >= 3:
     import io
     StringIO = io.BytesIO
+
+    def to_tytes(data):
+        if isinstance(data, str):
+            return bytes(data, 'utf-8')
+        return data
 else:
     import cStringIO
     StringIO = cStringIO.StringIO
+
+
+    def to_tytes(data):
+        if isinstance(data, unicode):
+            return data.encode("utf-8")
+        return data
 
 
 class TIOStreamTransportFactory:
@@ -99,22 +110,23 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         return main.switch()
 
     def write(self, data):
+        data = to_tytes(data)
         self._wbuffer.append(data)
         self._wbuffer_len += len(data)
         if self._wbuffer_len >= self.DEFAULT_BUFFER:
-            data = "".join(self._wbuffer)
+            data = b"".join(self._wbuffer)
             self._wbuffer.clear()
             self._wbuffer_len = 0
             self._stream.write(data)
 
     def flush(self):
         if self._wbuffer_len:
-            data = "".join(self._wbuffer)
+            data = b"".join(self._wbuffer)
             self._wbuffer.clear()
             self._wbuffer_len = 0
             future = self._stream.write(data)
         else:
-            future = self._stream.write('')
+            future = self._stream.write(b'')
         if future.done():
             return
 
