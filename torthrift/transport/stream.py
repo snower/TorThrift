@@ -159,7 +159,7 @@ class TStream(IOStream):
         if not data:
             future = self._write_future if self._write_future else TracebackFuture()
             future.set_result(None)
-            return None
+            return future
 
         self._write_buffer.append(data)
         self._write_buffer_size += len(data)
