@@ -7,6 +7,8 @@ import logging
 from collections import deque
 from tornado.ioloop import IOLoop
 from tornado.gen import TracebackFuture
+from tornado.iostream import StreamClosedError
+from thrift.transport.TTransport import TTransportException
 from .transport.stream import TStream as BaseTStream
 
 class TStreamPoolClosedError(Exception):
@@ -64,7 +66,11 @@ class TStreamPool(object):
         self._stream_count += 1
 
         def finish(open_future):
-            if open_future._exc_info is not None:
+            try:
+                open_future.result()
+            except StreamClosedError as e:
+                future.set_exception(TTransportException(TTransportException.NOT_OPEN, e.message))
+            except:
                 future.set_exc_info(open_future.exc_info())
             else:
                 future.set_result(stream)

@@ -66,8 +66,8 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
     def readAll(self, sz):
         try:
             return self.read(sz)
-        except StreamClosedError:
-            raise EOFError()
+        except Exception as e:
+            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
 
     def read(self, sz):
         data = self._rbuffer.read(sz)
@@ -95,10 +95,11 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         assert main is not None, "Execut must be running in child greenlet"
 
         def read_callback(future):
-            if future._exc_info is not None:
-                return child_gr.throw(future.exception())
+            try:
+                data = future.result()
+            except Exception as e:
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
 
-            data = future.result()
             if len(data) == sz:
                 return child_gr.switch(data)
 
@@ -117,16 +118,25 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             data = b"".join(self._wbuffer)
             self._wbuffer.clear()
             self._wbuffer_len = 0
-            self._stream.write(data)
+
+            try:
+                self._stream.write(data)
+            except Exception as e:
+                raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
 
     def flush(self):
         if self._wbuffer_len:
             data = b"".join(self._wbuffer)
             self._wbuffer.clear()
             self._wbuffer_len = 0
-            future = self._stream.write(data)
         else:
-            future = self._stream.write(b'')
+            data = b''
+
+        try:
+            future = self._stream.write(data)
+        except Exception as e:
+            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
+
         if future.done():
             return
 
@@ -135,9 +145,12 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         assert main is not None, "Execut must be running in child greenlet"
 
         def write_callback(future):
-            if future._exc_info is not None:
-                return child_gr.throw(future.exception())
-            return child_gr.switch(future.result())
+            try:
+                result = future.result()
+            except Exception as e:
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
+            return child_gr.switch(result)
+
         self._loop.add_future(future, write_callback)
         return main.switch()
 
@@ -161,10 +174,15 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         assert main is not None, "Execut must be running in child greenlet"
 
         def read_callback(future):
+            try:
+                data = future.result()
+            except Exception as e:
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
+
             if future._exc_info is not None:
                 return child_gr.throw(future.exception())
 
-            self._rbuffer = StringIO(future.result())
+            self._rbuffer = StringIO(data)
             return child_gr.switch(self._rbuffer)
         future = self._stream.read(reqlen)
         self._loop.add_future(future, read_callback)

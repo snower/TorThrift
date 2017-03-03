@@ -2,6 +2,7 @@
 # 14-8-16
 # create by: snower
 
+import sys
 import time
 import socket
 import errno
@@ -34,12 +35,17 @@ class TStream(IOStream):
             address = self._unix_socket
         else:
             address = (self._host, self._port)
-        future = self.connect(address)
-        if self._timeout > 0:
-            def timeout():
-                if self._connecting:
-                    self.close((None, TStreamConnectTimeoutError(), None))
-            self.io_loop.add_timeout(time.time() + self._timeout, timeout)
+        try:
+            future = self.connect(address)
+            if self._timeout > 0:
+                def timeout():
+                    if self._connecting:
+                        self.close((None, TStreamConnectTimeoutError(), None))
+
+                self.io_loop.add_timeout(time.time() + self._timeout, timeout)
+        except Exception:
+            future = TracebackFuture()
+            future.set_exc_info(sys.exc_info())
         return future
 
     def _handle_events(self, fd, events):
