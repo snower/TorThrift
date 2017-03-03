@@ -26,5 +26,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-version = "0.1.8"
-version_info = (0, 1, 8)
+version = "0.1.9"
+version_info = (0, 1, 9)

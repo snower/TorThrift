@@ -7,7 +7,6 @@ import greenlet
 from collections import deque
 from tornado.concurrent import TracebackFuture
 from tornado.ioloop import IOLoop
-from tornado.iostream import StreamClosedError
 from thrift.transport import TTransport
 
 
