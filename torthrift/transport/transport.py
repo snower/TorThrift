@@ -5,7 +5,7 @@
 import sys
 import greenlet
 from collections import deque
-from tornado.concurrent import TracebackFuture
+from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 from thrift.transport import TTransport
 
@@ -51,7 +51,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             future = self._stream.open()
         except:
             exc_info = sys.exc_info()
-            future = TracebackFuture()
+            future = Future()
             future.set_exc_info(exc_info)
         return future
 
@@ -73,21 +73,18 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         if len(data) >= sz:
             return data
         partialread = data
+        partialread_len = len(data)
 
-        if partialread:
-            self._stream._read_buffer.appendleft(partialread)
-            self._stream._read_buffer_size += len(partialread)
-
-        if sz <= self._stream._read_buffer_size:
-            data, data_len = b''.join(self._stream._read_buffer), self._stream._read_buffer_size
-            self._stream._read_buffer.clear()
+        if sz - partialread_len <= self._stream._read_buffer_size:
+            data, data_len = self._stream._read_buffer, self._stream._read_buffer_size
+            self._stream._read_buffer = bytearray()
             self._stream._read_buffer_size = 0
 
-            if data_len == sz:
-                return data
+            if partialread_len + data_len == sz:
+                return b''.join([partialread, data])
 
             self._rbuffer = StringIO(data)
-            return self._rbuffer.read(sz)
+            return partialread + self._rbuffer.read(sz - partialread_len)
 
         child_gr = greenlet.getcurrent()
         main = child_gr.parent
@@ -99,13 +96,13 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             except Exception as e:
                 return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
 
-            if len(data) == sz:
-                return child_gr.switch(data)
+            if partialread_len + len(data) == sz:
+                return child_gr.switch(b''.join([partialread, data]))
 
             self._rbuffer = StringIO(data)
-            return child_gr.switch(self._rbuffer.read(sz))
+            return child_gr.switch(partialread + self._rbuffer.read(sz - partialread_len))
 
-        future = self._stream.read(sz)
+        future = self._stream.read(sz - partialread_len)
         self._loop.add_future(future, read_callback)
         return main.switch()
 
@@ -158,13 +155,11 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         return self._rbuffer
 
     def cstringio_refill(self, partialread, reqlen):
-        if partialread:
-            self._stream._read_buffer.appendleft(partialread)
-            self._stream._read_buffer_size += len(partialread)
+        partialread_len = len(partialread)
 
-        if reqlen <= self._stream._read_buffer_size:
-            self._rbuffer = StringIO(b''.join(self._stream._read_buffer))
-            self._stream._read_buffer.clear()
+        if reqlen - partialread_len <= self._stream._read_buffer_size:
+            self._rbuffer = StringIO(b''.join([partialread_len, self._stream._read_buffer]))
+            self._stream._read_buffer = bytearray()
             self._stream._read_buffer_size = 0
             return self._rbuffer
 
@@ -178,11 +173,9 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             except Exception as e:
                 return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
 
-            if future._exc_info is not None:
-                return child_gr.throw(future.exception())
-
-            self._rbuffer = StringIO(data)
+            self._rbuffer = StringIO(b''.join([partialread, data]))
             return child_gr.switch(self._rbuffer)
-        future = self._stream.read(reqlen)
+
+        future = self._stream.read(reqlen - partialread_len)
         self._loop.add_future(future, read_callback)
         return main.switch()

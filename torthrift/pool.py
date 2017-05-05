@@ -6,7 +6,7 @@ import time
 import logging
 from collections import deque
 from tornado.ioloop import IOLoop
-from tornado.gen import TracebackFuture
+from tornado.gen import Future
 from tornado.iostream import StreamClosedError
 from thrift.transport.TTransport import TTransportException
 from .transport.stream import TStream as BaseTStream
@@ -84,7 +84,7 @@ class TStreamPool(object):
         if self._closed:
             raise TStreamPoolClosedError()
 
-        future = TracebackFuture()
+        future = Future()
         while self._streams:
             stream = self._streams.pop()
             self._used_streams[id(stream)] = stream
@@ -100,7 +100,7 @@ class TStreamPool(object):
         return future
 
     def release_stream(self, stream):
-        release_future = TracebackFuture()
+        release_future = Future()
         release_future.set_result(None)
 
         if stream.closed():
@@ -143,7 +143,7 @@ class TStreamPool(object):
             self._check_idle = False
 
     def close(self):
-        self._close_future = TracebackFuture()
+        self._close_future = Future()
         self._closed = True
 
         while self._wait_streams:
