@@ -81,7 +81,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             self._stream._read_buffer_size = 0
 
             if partialread_len + data_len == sz:
-                return b''.join([partialread, data])
+                return bytes(partialread + data)
 
             self._rbuffer = StringIO(data)
             return partialread + self._rbuffer.read(sz - partialread_len)
@@ -97,7 +97,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
                 return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
 
             if partialread_len + len(data) == sz:
-                return child_gr.switch(b''.join([partialread, data]))
+                return child_gr.switch(bytes(partialread + data))
 
             self._rbuffer = StringIO(data)
             return child_gr.switch(partialread + self._rbuffer.read(sz - partialread_len))
@@ -158,7 +158,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         partialread_len = len(partialread)
 
         if reqlen - partialread_len <= self._stream._read_buffer_size:
-            self._rbuffer = StringIO(b''.join([partialread_len, self._stream._read_buffer]))
+            self._rbuffer = StringIO(partialread + self._stream._read_buffer)
             self._stream._read_buffer = bytearray()
             self._stream._read_buffer_size = 0
             return self._rbuffer
@@ -173,7 +173,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             except Exception as e:
                 return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
 
-            self._rbuffer = StringIO(b''.join([partialread, data]))
+            self._rbuffer = StringIO(partialread + data)
             return child_gr.switch(self._rbuffer)
 
         future = self._stream.read(reqlen - partialread_len)

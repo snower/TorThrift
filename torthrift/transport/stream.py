@@ -163,7 +163,9 @@ class TStream(IOStream):
             raise StreamClosedError(real_error=self.error)
 
         if not data:
-            future = self._write_future if self._write_future else Future()
+            if self._write_future:
+                return self._write_future
+            future = Future()
             future.set_result(None)
             return future
 
