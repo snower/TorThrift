@@ -66,7 +66,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         try:
             return self.read(sz)
         except Exception as e:
-            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
+            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e))
 
     def read(self, sz):
         data = self._rbuffer.read(sz)
@@ -94,7 +94,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             try:
                 data = future.result()
             except Exception as e:
-                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e)))
 
             if partialread_len + len(data) == sz:
                 return child_gr.switch(bytes(partialread + data))
@@ -118,7 +118,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             try:
                 self._stream.write(data)
             except Exception as e:
-                raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
+                raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e))
 
     def flush(self):
         if self._wbuffer_len:
@@ -131,7 +131,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
         try:
             future = self._stream.write(data)
         except Exception as e:
-            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message)
+            raise TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e))
 
         if future.done():
             return
@@ -144,7 +144,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             try:
                 result = future.result()
             except Exception as e:
-                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e)))
             return child_gr.switch(result)
 
         self._loop.add_future(future, write_callback)
@@ -171,7 +171,7 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
             try:
                 data = future.result()
             except Exception as e:
-                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, e.message))
+                return child_gr.throw(TTransport.TTransportException(TTransport.TTransportException.END_OF_FILE, str(e)))
 
             self._rbuffer = StringIO(partialread + data)
             return child_gr.switch(self._rbuffer)
