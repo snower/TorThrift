@@ -8,16 +8,6 @@ import functools
 from tornado.ioloop import IOLoop
 from tornado.concurrent import is_future, Future
 
-
-class HandlerException(Exception):
-    def __init__(self, name, e, exc_info):
-        super(HandlerException, self).__init__(e.message)
-
-        self.name = name
-        self.e = e
-        self.exc_info = exc_info
-
-
 class HandlerWrapper(object):
     def __init__(self, server, processor, handler):
         self._server = server
@@ -56,8 +46,6 @@ class HandlerWrapper(object):
                 if is_future(result):
                     result = result.result()
                 return result
-            except Exception as e:
-                raise HandlerException(name, e, sys.exc_info())
             finally:
                 self._server.handing_count -= 1
 

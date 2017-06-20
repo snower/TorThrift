@@ -8,18 +8,12 @@ import socket
 import errno
 import ssl
 import greenlet
-import traceback
 from tornado import tcpserver
 from tornado.concurrent import Future
-from tornado.tcpserver import ssl_wrap_socket, app_log
+from tornado.tcpserver import ssl_wrap_socket
 from tornado.iostream import IOStream as BaseIOStream, SSLIOStream, StreamClosedError, errno_from_exception, _ERRNO_WOULDBLOCK
 from thrift.transport import TTransport
-from thrift.Thrift import TApplicationException as BaseTApplicationException, TMessageType
-from .handler import HandlerWrapper, HandlerException
-
-
-class TApplicationException(BaseTApplicationException):
-    HANDLER_UNKNOWN_ERROR = 1024
+from .handler import HandlerWrapper
 
 
 class IOStream(BaseIOStream):
@@ -173,17 +167,6 @@ class TTornadoServer(tcpserver.TCPServer):
     def handle_exception(self, exc_info):
         logging.error("processor error: %s", exc_info = exc_info)
 
-    def format_exception_message(self, e, exc_info):
-        etype, value, tb = exc_info
-        return "%s:%s\n%s" % (e.__class__.__name__, str(e), ''.join(traceback.format_exception(etype, value, tb, None)))
-
-    def handle_handler_exception(self, e, oprot):
-        x = TApplicationException(TApplicationException.HANDLER_UNKNOWN_ERROR, self.format_exception_message(e.e, e.exc_info))
-        oprot.writeMessageBegin(e.name, TMessageType.EXCEPTION, 0)
-        x.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process(self, itrans, otrans):
         iprot = self.input_protocol_factory.getProtocol(itrans)
         oprot = self.output_protocol_factory.getProtocol(otrans) if otrans and self.output_protocol_factory else iprot
@@ -191,10 +174,7 @@ class TTornadoServer(tcpserver.TCPServer):
         try:
             self.processor_count += 1
             while not self.stoped:
-                try:
-                    self.processor.process(iprot, oprot)
-                except HandlerException as e:
-                    self.handle_handler_exception(e, oprot)
+                self.processor.process(iprot, oprot)
         except (TTransport.TTransportException, IOError, StreamClosedError, EOFError):
             pass
         except Exception:
