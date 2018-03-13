@@ -20,6 +20,9 @@ class IOStream(BaseIOStream):
     def __init__(self, socket, *args, **kwargs):
         super(IOStream, self).__init__(socket, *args, **kwargs)
 
+        self._write_buffer = bytearray()
+        self._write_buffer_pos = 0
+        self._write_buffer_size = 0
         self._write_future = None
 
         if socket and self._state is None:
@@ -209,11 +212,11 @@ class TTornadoServer(tcpserver.TCPServer):
                     raise
         try:
             if self.ssl_options is not None:
-                stream = SSLIOStream(connection, io_loop=self.io_loop,
+                stream = SSLIOStream(connection,
                                      max_buffer_size=self.max_buffer_size,
                                      read_chunk_size=self.read_chunk_size)
             else:
-                stream = IOStream(connection, io_loop=self.io_loop,
+                stream = IOStream(connection,
                                   max_buffer_size=self.max_buffer_size,
                                   read_chunk_size=self.read_chunk_size)
             self.handle_stream(stream, address)
