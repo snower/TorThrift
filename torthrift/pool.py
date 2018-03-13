@@ -71,7 +71,7 @@ class TStreamPool(object):
             except StreamClosedError as e:
                 future.set_exception(TTransportException(TTransportException.NOT_OPEN, str(e)))
             except:
-                future.set_exc_info(open_future.exc_info())
+                future.set_exception(open_future.exception())
             else:
                 future.set_result(stream)
         IOLoop.current().add_future(open_future, finish)

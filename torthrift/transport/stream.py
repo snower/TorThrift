@@ -2,7 +2,6 @@
 # 14-8-16
 # create by: snower
 
-import sys
 import time
 import socket
 import errno
@@ -48,9 +47,9 @@ class TStream(IOStream):
                         self.close((None, TStreamConnectTimeoutError(), None))
 
                 self.io_loop.add_timeout(time.time() + self._timeout, timeout)
-        except Exception:
+        except Exception as e:
             future = Future()
-            future.set_exc_info(sys.exc_info())
+            future.set_exception(e)
         return future
 
     def _handle_events(self, fd, events):

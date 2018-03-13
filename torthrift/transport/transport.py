@@ -49,10 +49,9 @@ class TIOStreamTransport(TTransport.TTransportBase, TTransport.CReadableTranspor
     def open(self):
         try:
             future = self._stream.open()
-        except:
-            exc_info = sys.exc_info()
+        except Exception as e:
             future = Future()
-            future.set_exc_info(exc_info)
+            future.set_exception(e)
         return future
 
     def closed(self):

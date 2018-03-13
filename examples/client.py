@@ -26,7 +26,7 @@ try:
     start = time.time()
     for i in range(10000):
         result = client.add(0,i)
-    print time.time()-start
+    print(time.time()-start)
 
-except Thrift.TException, ex:
-    print "%s" % (ex.message)
+except Thrift.TException as ex:
+    print("%s" % (ex.message))

@@ -2,7 +2,6 @@
 # 14-8-19
 # create by: snower
 
-import sys
 import greenlet
 from tornado import gen
 from tornado.concurrent import Future
@@ -19,11 +18,12 @@ def async_call_method(fun, *args, **kwargs):
                 IOLoop.current().add_callback(future.set_result, result)
             else:
                 future.set_result(result)
-        except:
+        except Exception as e:
             if future._callbacks:
-                IOLoop.current().add_callback(future.set_exc_info, sys.exc_info())
+                IOLoop.current().add_callback(future.set_exception, e)
             else:
-                future.set_exc_info(sys.exc_info())
+                future.set_exception(e)
+
     child_gr = greenlet.greenlet(finish)
     child_gr.switch()
     return future

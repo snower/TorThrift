@@ -2,7 +2,6 @@
 #16-6-18
 # create by: snower
 
-import sys
 import greenlet
 import functools
 from tornado.ioloop import IOLoop
@@ -26,10 +25,9 @@ class HandlerWrapper(object):
                 result = func(*args, **kwargs)
                 if not is_future(result):
                     return child_gr.switch(result)
-            except:
-                exc_info = sys.exc_info()
+            except Exception as e:
                 result = Future()
-                result.set_exc_info(exc_info)
+                result.set_exception(e)
             return ioloop.add_future(result, child_gr.switch)
 
         @functools.wraps(func)
