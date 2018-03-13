@@ -6,12 +6,12 @@ from setuptools import setup
 
 setup(
     name='torthrift',
-    version='0.2.3',
+    version='0.2.4',
     packages=['torthrift','torthrift.server','torthrift.transport'],
     package_data={
         '': ['README.rst'],
     },
-    install_requires=['thrift>=0.10.0','tornado>=4.5', 'greenlet>=0.4.2',],
+    install_requires=['thrift>=0.10.0','tornado>=5.0', 'greenlet>=0.4.2',],
     author='snower',
     author_email='sujian199@gmail.com',
     url='http://github.com/snower/TorThrift',
